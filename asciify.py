@@ -50,3 +50,4 @@ if __name__ == "__main__":
     asciify_im = Asciify(Image.open("earth.gif"))
     gif_list = asciify_im.grayify_and_resize()
     char_list = asciify_im.ascii_map(gif_list)
+    print(len(char_list))
