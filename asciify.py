@@ -5,8 +5,8 @@ ASCII_SHADING_CHARS = ['M', 'N', 'F', 'V', '$', 'I', '*', ':']  # from darkest t
 
 
 class Asciify:
-    def __init__(self, image, new_height=100):
-        self._nh = new_height
+    def __init__(self, image, new_width=100):
+        self._nw = new_width
         self.im = image
         self.width, self.height = image.size  # image.size returns a 2 tuple (width, height) in pixels
 
@@ -16,14 +16,15 @@ class Asciify:
         :returns: a list of resized black&white Image objects
         """
 
-        # new dimensions for each frame to scale with original aspect ratio
-        new_height = self._nh
-        new_width = new_height * self.width / self.height
+        # new dimensions for each frame; same aspect ratio as original width x height
+        new_width = self._nw
+        new_height = new_width * self.height / self.width
         num_frames = self.im.n_frames  # number of frames in the .gif animation
         result_list = []
-        for i in range(num_frames - 1):
+        for i in range(0, num_frames - 1):
             result_list.append(self.im.convert('L').resize((int(new_width), new_height)))
             self.im.seek(self.im.tell() + 1)  # move to the next frame in the gif animation
+
         return result_list
 
     def ascii_map(self, im_list, color_width=32):
@@ -40,7 +41,8 @@ class Asciify:
             append_list = []
             for pixel_value in pixels:
                 append_list.append(ASCII_SHADING_CHARS[pixel_value//color_width])  # 'replace' pixel with ascii char
-            result_list.append("".join(append_list))
+            result_list.append("".join(append_list))  # adds an element to result_list containing every pixel for image
+
         return result_list
 
 
@@ -48,4 +50,3 @@ if __name__ == "__main__":
     asciify_im = Asciify(Image.open("earth.gif"))
     gif_list = asciify_im.grayify_and_resize()
     char_list = asciify_im.ascii_map(gif_list)
-    print(len("".join(char_list)))
