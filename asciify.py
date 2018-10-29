@@ -1,7 +1,7 @@
-from PIL import Image
+from PIL import Image, ImageFont, ImageDraw
 
 ASCII_SHADING_CHARS = ['M', 'W', 'N', 'Q', 'B', 'H', 'K', 'R', '#', 'E', 'D', 'F', 'X', 'O', 'A', 'P', 'G', 'U', 'S',
-                       'V', 'Z', 'Y', 'C', 'L', 'T', 'J', '$', 'I', '*', ':', '.', ' ']  # from darkest to lightest
+                       'V', 'Z', 'Y', 'C', 'L', 'T', 'J', '$', 'I', '*', ':', '.', ' ']  # from darkest to lightest 32
 
 
 class Asciify:
@@ -28,7 +28,7 @@ class Asciify:
 
         return result_list
 
-    def ascii_map(self, im_list, color_width=int(255 / len(ASCII_SHADING_CHARS )+1)):
+    def ascii_map(self, im_list, color_width=int(255 / len(ASCII_SHADING_CHARS))):
         """
         Maps an ascii shading character to a pixel of each frame of the GIF
         :param im_list: a list of black and white Image objects
@@ -43,7 +43,7 @@ class Asciify:
             append_list = []  # temporary list to append to ascii_image_list
             for pixel_value in pixels:
                 index = int(pixel_value // color_width)
-                if index == len(ASCII_SHADING_CHARS):
+                if index >= len(ASCII_SHADING_CHARS):
                     append_list.append(ASCII_SHADING_CHARS[-1])
                 else:
                     append_list.append(ASCII_SHADING_CHARS[index])  # 'replace' pixel with ascii char
@@ -56,11 +56,30 @@ class Asciify:
 
         return result_list
 
+    def gifify(self, ascii_image_list):
+        font = ImageFont.truetype('ascii.ttf', 8)
+        ascii_images = ['\n'.join(image) for image in ascii_image_list]
+        pil_gifs = [Image.new('RGBA', (self._nw*5, self._nh*11)) for ascii_image in ascii_images]
+        draw_gifs = [ImageDraw.Draw(pil_gif) for pil_gif in pil_gifs]
+        for draw_gif in draw_gifs:
+            draw_gif.text((0,0), ascii_images[draw_gifs.index(draw_gif)], (255,255,255), font=font)
+        gif = Image.new('RGBA', size=(self._nw*5, self._nh*11))
+        gif.save('ascii.gif', save_all=True, loop=0, append_images=pil_gifs)
+
+        resize_list = []
+        gif_big = Image.open('ascii.gif')
+        for i in range(gif_big.n_frames - 1):
+            resize_list.append(gif_big.resize((self._nw, self._nh)))
+            gif_big.seek(gif_big.tell() + 1)
+        resized_gif = Image.new('RGBA', (self._nw, self._nh))
+        resized_gif.save('ascii_resized.gif', save_all=True, loop=0, append_images=resize_list)
+
 
 if __name__ == "__main__":
-    asciify_im = Asciify(Image.open("earth.gif"), 500)
+    asciify_im = Asciify(Image.open("earth.gif"), 200)
     gif_list = asciify_im.grayify_and_resize()
     ascii_images = asciify_im.ascii_map(gif_list)
-    outfile = open("outfile.txt", 'w')
-    for image in ascii_images:
-        outfile.write("\n".join(image) + '\n\n')
+    gif = asciify_im.gifify(ascii_images)
+    #outfile = open("outfile.txt", 'w')
+    #for image in ascii_images:
+    #    outfile.write("\n".join(image) + '\n\n')
