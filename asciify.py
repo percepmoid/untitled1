@@ -16,20 +16,30 @@ class Asciify:
         self._nh = int(new_width * self.height / self.width)
         self.im = img
 
-    def grayify_and_resize(self):
+    def grayify_and_resize(self, img=None):
         """
         Split the GIF into individual frames. Resize and convert each frame to monochrome.
         :returns: a list of resized black&white Image objects
         """
 
-        new_width = self._nw
-        new_height = self._nh
-        num_frames = self.im.n_frames  # number of frames in the .gif animation
+        print("Converting image to grayscale and resizing...", end=' ')
         result_list = []
-        for i in range(0, num_frames - 1):
-            # convert to mode L (b&w); resize to new dimensions
-            result_list.append(self.im.convert('L').resize((int(new_width), new_height)))
-            self.im.seek(self.im.tell() + 1)  # move to the next frame in the gif animation
+        if img:
+            width, height = self._nw, self._nh
+            num_frames = img.n_frames
+            for i in range(num_frames - 1):
+                result_list.append(img.resize((width, height)))
+                img.seek(img.tell() + 1)
+
+        else:
+            new_width = self._nw
+            new_height = self._nh
+            num_frames = self.im.n_frames  # number of frames in the .gif animation
+            for i in range(0, num_frames - 1):
+                # convert to mode L (b&w); resize to new dimensions
+                result_list.append(self.im.convert('L').resize((int(new_width), new_height)))
+                self.im.seek(self.im.tell() + 1)  # move to the next frame in the gif animation
+        print("done!")
 
         return result_list
 
@@ -41,6 +51,7 @@ class Asciify:
         :returns: a list of each frame of the gif converted to ascii pixels
         """
 
+        print("Creating ascii character pixels...", end=' ')
         ascii_image_list = []  # unformatted ascii images; needs to be broken into proper rows and columns
         result_list = []  # ascii_image_list broken into proper rows and columns; how convinient
         for image in im_list:
@@ -58,6 +69,7 @@ class Asciify:
             ascii_string = "".join(ascii_image)
             result_list.append([ascii_string[index:index + self._nw]
                                 for index in range(0, len(ascii_string), self._nw)])
+        print("done!")
 
         return result_list
 
@@ -68,20 +80,31 @@ class Asciify:
         :returns: None
         """
 
-        font = ImageFont.truetype('ascii.ttf', 7)  # set font and font size
+        print("Creating your gif (this may take awhile)...")
+        # 7 = nw*4, nh*10
+        # 5 = nw*3, nh*8
+        font = ImageFont.truetype('ascii.ttf', 11)  # set font and font size
         ascii_image_strings = ['\n'.join(image) for image in ascii_image_list]
-        # Create n PIL images, where n is the number of frames in the original gif
-        pil_gifs = [Image.new('RGBA', (self._nw*4, self._nh*10)) for i in range(len(ascii_image_strings))]
-        draw_gifs = [ImageDraw.Draw(pil_gif) for pil_gif in pil_gifs]  # create a PIL ImageDraw for the new frames
-        for draw_gif in draw_gifs:  # write the ascii strings to each frame
-            draw_gif.text((0, 0), ascii_image_strings[draw_gifs.index(draw_gif)], (255, 255, 255), font=font)
-        save_as = Image.new('RGBA', size=(self._nw*4, self._nh*10))  # create a new PIL Image to save the frames to
-        save_as.save('ascii.gif', save_all=True, loop=0, duration=42, append_images=pil_gifs[1:-1])  # save it
+        ascii_image_gifs = []
+        resized_ascii_gifs = []
+        for image in ascii_image_strings:
+            temp_image = Image.new('RGBA', (self._nw*7, self._nh*13), 'white')
+            image_draw = ImageDraw.Draw(temp_image)
+            image_draw.text((0, 0), image, font=font, fill='black')
+            ascii_image_gifs.append(temp_image)
+            print("{}% complete".format(round(len(ascii_image_gifs) / len(ascii_image_strings)*100), 2))
+        print("Resizing your gif back to original dimensions...", end=' ')
+        for i in range(len(ascii_image_gifs)):
+            resized = ascii_image_gifs[i].resize((self.width, self.height))
+            resized_ascii_gifs.append(resized)
+        resized_ascii_gifs[0].save('resized_gif.gif', save_all=True, loop = 0, duration=1, append_images=resized_ascii_gifs[1:])
+        print("done!")
 
 
 if __name__ == "__main__":
-    im = Image.open("trippy.gif")
-    asciify_im = Asciify(im, 110)
+    im = Image.open("sponge.gif")
+    width, _ = im.size
+    asciify_im = Asciify(im, int(width))
     gif_list = asciify_im.grayify_and_resize()
     ascii_images = asciify_im.ascii_map(gif_list)
     asciify_im.gifify(ascii_images)
